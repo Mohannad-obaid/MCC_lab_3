@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,6 +21,7 @@ class _MyHomePageState extends State<MyHomePage> with Helpers {
   ImagePicker imagePicker = ImagePicker();
   final storageRef = FirebaseStorage.instance.ref().child('images/');
   String? _imageUrl;
+  File? file;
 
   @override
   initState() {
@@ -120,6 +122,36 @@ class _MyHomePageState extends State<MyHomePage> with Helpers {
                   style: TextStyle(fontSize: 20, color: Colors.white),
                 ),
               ),
+
+
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  minimumSize:
+                  Size(MediaQuery.of(context).size.width * 0.8, 50),
+                ),
+                onPressed: () async {
+                  final connectivityResult =
+                  await (Connectivity().checkConnectivity());
+                  if (connectivityResult == ConnectivityResult.mobile ||
+                      connectivityResult == ConnectivityResult.wifi) {
+                    uoloadFile();
+                  } else {
+                    showSnackBar(
+                        context: context,
+                        content: 'No internet connection',
+                        error: true);
+                  }
+                },
+                child: const Text(
+                  'Save',
+                  style: TextStyle(fontSize: 20, color: Colors.white),
+                ),
+              ),
+
             ],
           ),
         ),
@@ -140,6 +172,31 @@ class _MyHomePageState extends State<MyHomePage> with Helpers {
           _pickedFile = _pickedFile;
         });
       }
+      return true;
+    } catch (e) {
+      print(e);
+      return false;
+    }
+  }
+
+  Future<bool> pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+      if (result != null) {
+        setState(() {
+          file = File(result.files.single.path!);
+        });
+      }else{
+        showSnackBar(
+            context: context,
+            content: 'No internet connection',
+            error: true);
+
+
+
+      }
+
       return true;
     } catch (e) {
       print(e);
@@ -203,9 +260,40 @@ class _MyHomePageState extends State<MyHomePage> with Helpers {
     }
   }
 
+
+  void uoloadFile() async {
+    if (_indicatorValue != null) {
+      // await  pickImage();
+      try {
+        uploadImage(
+            file: file!,
+            eventHandler: (status, TaskState state, message) {
+              if (status) {
+                //upload successfully
+                changeIndicatorValue(1);
+                showSnackBar(context: context, content: message, error: false);
+              } else if (state == TaskState.running) {
+                //uploading
+              } else {
+                changeIndicatorValue(0);
+                showSnackBar(context: context, content: message, error: true);
+              }
+            });
+      } catch (e) {
+        showSnackBar(
+            context: context, content: 'Pick image to uploada!', error: true);
+      }
+    } else {
+      showSnackBar(
+          context: context, content: 'Pick image to uploada!', error: true);
+    }
+  }
+
   void changeIndicatorValue(double? value) {
     setState(() {
       _indicatorValue = value;
     });
   }
 }
+
+
